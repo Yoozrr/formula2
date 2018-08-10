@@ -32,24 +32,70 @@ const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
     filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid),
     reduceFp((sum, voucherItem) => {
       const viValue = math.multiply(voucherItem.quantity, voucherItem.rate)
-      return math.chain(sum).add(viValue).done()
+      
+      if (voucherItem.isCreditDebitNote) {
+        return math.chain(sum).subtract(viValue).done().toFixed(2)
+      } else {
+        return math.chain(sum).add(viValue).done().toFixed(2)
+      }
     }, 0)
   )(vouchers)
 
 export function calculateGrossProfit (costItem) {
-  costItem.sellRate = math.multiply(costItem.sellBaseRate, costItem.sellExchangeRate)
-  costItem.sellTotal = math.multiply(costItem.sellRate, costItem.quantity)
-  costItem.costRate = math.multiply(costItem.costBaseRate, costItem.costExchangeRate)
-  costItem.costTotal = math.multiply(costItem.costRate, costItem.quantity)
-  costItem.grossProfit = math.chain(costItem.accountReceivable || 0)
-    .subtract(costItem.accountPayable || 0)
-    .subtract(costItem.cashBook || 0)
-    .subtract(costItem.blankCheque || 0)
-    .done()
-  costItem.estimatedProfit = math.subtract(costItem.sellTotal || 0, costItem.costTotal || 0)
+  costItem.sellRate = math.multiply(costItem.sellBaseRate, costItem.sellExchangeRate).toFixed(2)
+  costItem.sellTotal = math.multiply(costItem.sellRate, costItem.quantity).toFixed(2)
+  costItem.costRate = math.multiply(costItem.costBaseRate, costItem.costExchangeRate).toFixed(2)
+  costItem.costTotal = math.multiply(costItem.costRate, costItem.quantity).toFixed(2)
+  costItem.estimatedProfit = math.subtract(costItem.sellTotal || 0, costItem.costTotal || 0).toFixed(2)
+  // Gross profit computed if no cost or both AP and AR exisit
+  costItem.grossProfit = costItem.costTotal === 0 || (costItem.accountReceivable > 0 && costItem.accountPayable > 0) ?
+    math.chain(costItem.accountReceivable || 0)
+      .subtract(costItem.accountPayable || 0)
+      .subtract(costItem.cashBook || 0)
+      .subtract(costItem.blankCheque || 0)
+      .done().toFixed(2) :
+    0
 
   return costItem
 }
+
+export function computeCostItems (costItems, vouchers) {
+  for (let costItem of costItems) {
+    costItem.accountPayable = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCPAY' })
+    costItem.accountReceivable = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCREC' })
+    costItem.accountPayableDraft = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCPAY' }) +
+      getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCPAY' })
+    costItem.accountReceivableDraft = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCREC' }) +
+      getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCREC' })
+    costItem.cashBook = 0
+    costItem.blankCheque = 0
+    costItem = this.calculateGrossProfit(costItem)
+  }
+
+  return costItems
+}
+
+export function summarizeCostItems (costItems) {
+  const rtnObj = {}
+  const totals = ['estimatedProfit', 'grossProfit', 'costTotal', 'sellTotal', 'accruals', 'accountPayable', 'accountReceivable', 'accountPayableDraft', 'accountReceivableDraft']
+  
+  totals.map(t => {
+    rtnObj[t] = 0
+  })
+
+  for (let costItem of costItems) {
+    totals.map(t => {
+      rtnObj[t] = math.add(costItem[t] || 0, rtnObj[t])
+    })
+  }
+
+  totals.map(t => {
+    rtnObj[t] = rtnObj[t].toFixed(2)
+  })
+
+  return rtnObj
+}
+
 
 // import * as _promise from 'bluebird'
 
