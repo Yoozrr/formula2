@@ -1,4 +1,40 @@
 import * as math from 'mathjs'
+import { find, countBy, sortBy, flow, isEmpty, mapValues } from 'lodash'
+import { map as mapFp, filter as filterFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
+import flattenFp from 'lodash/fp/flatten'
+  
+const getBookingVouchers = flow(
+  mapFp((booking) => {
+    if (booking && booking.vouchers) {
+      return booking.vouchers
+    } else {
+      return []
+    }
+  }),
+  flattenFp
+)
+
+  const getVoucherItems = flow(
+    mapFp((voucher) => {
+      if (voucher && voucher.voucherItems) {
+        return voucher.voucherItems
+      } else {
+        return []
+      }
+    }),
+    flattenFp
+  )
+
+const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
+  flow(
+    filterFp((voucher) => voucher.status === voucherStatus && voucher.transactionType === transactionType),
+    getVoucherItems,
+    filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid),
+    reduceFp((sum, voucherItem) => {
+      const viValue = math.multiply(voucherItem.quantity, voucherItem.rate)
+      return math.chain(sum).add(viValue).done()
+    }, 0)
+  )(vouchers)
 
 export function calculateGrossProfit (costItem) {
   costItem.sellRate = math.multiply(costItem.sellBaseRate, costItem.sellExchangeRate)
@@ -15,8 +51,6 @@ export function calculateGrossProfit (costItem) {
   return costItem
 }
 
-// import { find, countBy, sortBy, flow, isEmpty, mapValues } from 'lodash'
-// import { map as mapFp, flatten as flattenFp, filter as filterFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
 // import * as _promise from 'bluebird'
 
 // // export default function (app) {
@@ -25,38 +59,6 @@ export function calculateGrossProfit (costItem) {
 // //     sequelize
 // //   } = app
 
-//   const getBookingVouchers = flow(
-//     mapFp((booking) => {
-//       if (booking && booking.vouchers) {
-//         return booking.vouchers
-//       } else {
-//         return []
-//       }
-//     }),
-//     flattenFp
-//   )
-
-//   const getVoucherItems = flow(
-//     mapFp((voucher) => {
-//       if (voucher && voucher.voucherItems) {
-//         return voucher.voucherItems
-//       } else {
-//         return []
-//       }
-//     }),
-//     flattenFp
-//   )
-
-//   const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
-//     flow(
-//       filterFp((voucher) => voucher.status === voucherStatus && voucher.transactionType === transactionType),
-//       getVoucherItems,
-//       filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid),
-//       reduceFp((sum, voucherItem) => {
-//         const viValue = math.multiply(voucherItem.quantity, voucherItem.rate)
-//         return math.chain(sum).add(viValue).done()
-//       }, 0)
-//     )(vouchers)
 
 //   class CostService {
 //     // async getCostItems (uuid, company) {
