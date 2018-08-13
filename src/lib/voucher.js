@@ -28,6 +28,22 @@ export function calculateVoucher ({ ...voucher }) {
   return voucher
 }
 
+export function calculateVoucherWithBalance ({ voucher: { ...voucher }, voucherPayments: { ...voucherPayments } }) {
+  const voucherItems = voucher.voucherItems || []
+  voucher.voucherItems = voucherItems.map(calculateVoucherItem)
+  voucher.subTotal = voucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.subTotal), 0)
+  voucher.taxTotal = voucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.taxTotal), 0)
+  voucher.total = math.sum(voucher.subTotal, voucher.taxTotal)
+  voucher.issueDate = startOfDay(voucher.issueDate)
+  voucher.voucherDate = startOfDay(voucher.voucherDate)
+  voucher.dueDate = this.calculateDueDate(voucher)
+  
+  const totalVoucherPayment = voucherPayments.reduce((sum, vp) => math.sum(sum, vp.amount), 0)
+  voucher.balance = math.subtract(voucher.total, totalVoucherPayment)
+
+  return voucher
+}
+
 export function sortVoucherItems (voucherItems) {
   return sortBy(voucherItems, (vi) => {
     if (!vi.costItem || !vi.costItem.chargeItem) {
