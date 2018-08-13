@@ -1,5 +1,6 @@
 import * as math from 'mathjs'
 import { addDays, startOfDay } from 'date-fns'
+import { sortBy } from 'lodash'
 
 export function calculateDueDate (voucher) {
   return addDays(startOfDay(voucher.issueDate), voucher.term)
@@ -25,4 +26,16 @@ export function calculateVoucher ({ ...voucher }) {
   voucher.dueDate = this.calculateDueDate(voucher)
 
   return voucher
+}
+
+export function sortVoucherItems (voucherItems) {
+  return sortBy(voucherItems, (vi) => {
+    if (!vi.costItem || !vi.costItem.chargeItem) {
+      throw new Error(`Cannot sort Voucher Items without Chargeitems.`)
+    }
+    let sequence = vi.costItem.chargeItem.sequence
+    let code = vi.costItem.chargeItem.code
+
+    return parseInt(sequence) * 1000 + parseInt(code)
+  })
 }
