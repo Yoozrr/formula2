@@ -28,7 +28,7 @@ export function calculateVoucher ({ ...voucher }) {
   return voucher
 }
 
-export function calculateVoucherWithBalance ({ voucher: { ...voucher }, voucherPayments: [...voucherPayments] }) {
+export function calculateVoucherWithBalance ({ voucher: { ...voucher }, payments }) {
   const voucherItems = voucher.voucherItems || []
   voucher.voucherItems = voucherItems.map(calculateVoucherItem)
   voucher.subTotal = voucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.subTotal), 0)
@@ -38,7 +38,7 @@ export function calculateVoucherWithBalance ({ voucher: { ...voucher }, voucherP
   voucher.voucherDate = startOfDay(voucher.voucherDate)
   voucher.dueDate = this.calculateDueDate(voucher)
   
-  const totalVoucherPayment = voucherPayments.reduce((sum, vp) => math.sum(sum, vp.amount), 0)
+  const totalVoucherPayment = payments.reduce((sum, vp) => math.sum(sum, vp.amount), 0)
   voucher.balance = math.subtract(voucher.total, totalVoucherPayment)
 
   return voucher
