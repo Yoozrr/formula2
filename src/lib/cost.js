@@ -17,7 +17,10 @@ const getBookingVouchers = flow(
   const getVoucherItems = flow(
     mapFp((voucher) => {
       if (voucher && voucher.voucherItems) {
-        return voucher.voucherItems
+        return voucher.voucherItems.map(vi => {
+          vi.isCreditDebitNote = voucher.isCreditDebitNote
+          return vi
+        })
       } else {
         return []
       }
