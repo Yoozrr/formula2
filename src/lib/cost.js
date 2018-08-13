@@ -42,6 +42,7 @@ const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
   )(vouchers)
 
 export function calculateGrossProfit (costItem) {
+  console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')
   costItem.sellRate = math.multiply(costItem.sellBaseRate, costItem.sellExchangeRate).toFixed(2)
   costItem.sellTotal = math.multiply(costItem.sellRate, costItem.quantity).toFixed(2)
   costItem.costRate = math.multiply(costItem.costBaseRate, costItem.costExchangeRate).toFixed(2)
@@ -52,6 +53,7 @@ export function calculateGrossProfit (costItem) {
     math.chain(costItem.accountReceivable || 0)
       .subtract(costItem.accountPayable || 0)
       .subtract(costItem.cashBook || 0)
+      .subtract(costItem.accrual || 0)
       .subtract(costItem.blankCheque || 0)
       .done().toFixed(2) :
     0
@@ -60,16 +62,41 @@ export function calculateGrossProfit (costItem) {
 }
 
 export function computeCostItems (costItems, vouchers) {
-  for (let costItem of costItems) {
-    costItem.accountPayable = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCPAY' })
-    costItem.accountReceivable = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCREC' })
-    costItem.accountPayableDraft = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCPAY' }) +
-      getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCPAY' })
-    costItem.accountReceivableDraft = getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCREC' }) +
-      getRate({ costItemUuid: costItem.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCREC' })
-    costItem.cashBook = 0
-    costItem.blankCheque = 0
-    costItem = this.calculateGrossProfit(costItem)
+  for (let ci of costItems) {
+    ci.sellRate = math.multiply(ci.sellBaseRate, ci.sellExchangeRate).toFixed(2)
+    ci.sellTotal = math.multiply(ci.sellRate, ci.quantity).toFixed(2)
+    ci.costRate = math.multiply(ci.costBaseRate, ci.costExchangeRate).toFixed(2)
+    ci.costTotal = math.multiply(ci.costRate, ci.quantity).toFixed(2)
+    ci.estimatedProfit = math.subtract(ci.sellTotal || 0, ci.costTotal || 0).toFixed(2)
+
+    ci.accountPayable = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCPAY' })
+    ci.accountReceivable = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCREC' })
+    ci.accountPayableDraft = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCPAY' }) +
+      getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCPAY' })
+    ci.accountReceivableDraft = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCREC' }) +
+      getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCREC' })
+  
+    // **** TEMP TO SIMULATE ACCRUALS!!!
+    if (ci.accountPayable || ci.accountReceivable) {
+      ci.accrual = math.subtract(
+        math.subtract(ci.accountPayable, ci.costTotal), 
+        math.subtract(ci.accountReceivable, ci.sellTotal)
+      ).toFixed(2)
+    }
+    // **** TEMP TO SIMULATE ACCRUALS!!!
+
+    // Gross profit computed if no cost or both AP and AR exisit
+    ci.grossProfit = ci.costTotal === 0 || (ci.accountReceivable > 0 && ci.accountPayable > 0) ?
+    math.chain(ci.accountReceivable || 0)
+      .subtract(ci.accountPayable || 0)
+      .subtract(ci.cashBook || 0)
+      .add(ci.accrual || 0)
+      .subtract(ci.blankCheque || 0)
+      .done().toFixed(2) :
+    0
+  
+    ci.cashBook = 0
+    ci.blankCheque = 0
   }
 
   return costItems
@@ -77,7 +104,7 @@ export function computeCostItems (costItems, vouchers) {
 
 export function summarizeCostItems (costItems) {
   const rtnObj = {}
-  const totals = ['estimatedProfit', 'grossProfit', 'costTotal', 'sellTotal', 'accruals', 'accountPayable', 'accountReceivable', 'accountPayableDraft', 'accountReceivableDraft']
+  const totals = ['estimatedProfit', 'grossProfit', 'costTotal', 'sellTotal', 'accrual', 'accountPayable', 'accountReceivable', 'accountPayableDraft', 'accountReceivableDraft']
   
   totals.map(t => {
     rtnObj[t] = 0
@@ -96,6 +123,14 @@ export function summarizeCostItems (costItems) {
   return rtnObj
 }
 
+export function sortCostItems (costItems) {
+  return sortBy(costItems, (c) => {
+    let sequence = c.sequence || c.chargeItem.sequence
+    let code = c.code || c.chargeItem.code
+
+    return parseInt(sequence) * 1000 + parseInt(code)
+  })
+}
 
 // import * as _promise from 'bluebird'
 
