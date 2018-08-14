@@ -23,7 +23,7 @@ export function calculateVoucher ({ ...voucher }) {
   voucher.balance = math.subtract(voucher.total, 0)
   voucher.issueDate = startOfDay(voucher.issueDate)
   voucher.voucherDate = startOfDay(voucher.voucherDate)
-  voucher.dueDate = addDays(startOfDay(voucher.issueDate), voucher.term)
+  voucher.dueDate = calculateDueDate(voucher)
 
   return voucher
 }
@@ -36,7 +36,7 @@ export function calculateVoucherWithBalance ({ voucher: { ...voucher }, payments
   voucher.total = math.sum(voucher.subTotal, voucher.taxTotal)
   voucher.issueDate = startOfDay(voucher.issueDate)
   voucher.voucherDate = startOfDay(voucher.voucherDate)
-  voucher.dueDate = addDays(startOfDay(voucher.issueDate), voucher.term)
+  voucher.dueDate = calculateDueDate(voucher)
   
   const totalVoucherPayment = payments.reduce((sum, vp) => math.sum(sum, vp.amount), 0)
   voucher.balance = math.subtract(voucher.total, totalVoucherPayment)
