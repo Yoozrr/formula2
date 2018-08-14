@@ -89,15 +89,28 @@ export function computeCostItems (costItems, vouchers) {
     // **** TEMP TO SIMULATE ACCRUALS!!!
 
     // Gross profit computed if no cost or both AP and AR exisit
-    ci.grossProfit = ci.costTotal === 0 || (ci.accountReceivable > 0 && ci.accountPayable > 0) ?
-    math.chain(ci.accountReceivable || 0)
-      .subtract(ci.accountPayable || 0)
-      .subtract(ci.cashBook || 0)
-      .add(ci.accrual || 0)
-      .subtract(ci.blankCheque || 0)
-      .done().toFixed(2) :
-    0
-  
+    // GP = Only compute after AR
+    // (SellTotal > AR ? SellTotal : AR) - 
+    // (CostTotal > (AP + Accrual) ? CostTotal-Accrual : (AP + Accrual))
+    const sellAmt = ci.sellTotal > ci.accountReceivable ? ci.sellTotal || 0 : ci.accountReceivable || 0
+    const costAmt = ci.costTotal > (math.add(ci.accountPayable || 0, ci.accrual || 0)) ? math.subtract(ci.costTotal || 0, ci.accrual || 0) : math.add(ci.accountPayable || 0, ci.accrual || 0)
+    ci.grossProfit = ci.accountReceivable > 0 ?
+      math.chain(sellAmt)
+        .subtract(costAmt)
+        .done().toFixed(2) :
+      0
+
+    // Short Bill = cost - AP - APDraft
+    //   show If AR < AP (neg accrual)
+    //   Or show If EstCost < AP (neg accrual)
+
+    ci.shortBill = ci.accrual < 0 ?
+      math.chain(ci.costTotal)
+        .subtract(ci.accountPayable || 0)
+        .subtract(ci.accountPayableDraft || 0)
+        .done().toFixed(2) :
+      0
+    
     ci.cashBook = 0
     ci.blankCheque = 0
   }
@@ -107,7 +120,7 @@ export function computeCostItems (costItems, vouchers) {
 
 export function summarizeCostItems (costItems) {
   const rtnObj = {}
-  const totals = ['estimatedProfit', 'grossProfit', 'costTotal', 'sellTotal', 'accrual', 'accountPayable', 'accountReceivable', 'accountPayableDraft', 'accountReceivableDraft']
+  const totals = ['estimatedProfit', 'grossProfit', 'costTotal', 'sellTotal', 'accrual', 'accountPayable', 'accountReceivable', 'accountPayableDraft', 'accountReceivableDraft', 'shortBill']
   
   totals.map(t => {
     rtnObj[t] = 0
@@ -122,6 +135,10 @@ export function summarizeCostItems (costItems) {
   totals.map(t => {
     rtnObj[t] = rtnObj[t].toFixed(2)
   })
+
+  rtnObj.shortBillPercentage = rtnObj.sellTotal > 0 ? 
+    math.chain(rtnObj.shortBill).divide(rtnObj.sellTotal).multiply(100).done().toFixed(2) : 
+    0
 
   return rtnObj
 }
