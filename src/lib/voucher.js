@@ -6,7 +6,7 @@ export function calculateDueDate (voucher) {
   return addDays(startOfDay(voucher.issueDate), voucher.term)
 }
 
-export function calculateVoucherItem (voucherItem) {
+export function calculateVoucherItem ({ ...voucherItem }) {
   voucherItem.rate = math.multiply(voucherItem.exchangeRate, voucherItem.baseRate)
   voucherItem.subTotal = math.multiply(voucherItem.quantity, voucherItem.rate)
   voucherItem.taxTotal = math.chain(voucherItem.subTotal).multiply(voucherItem.taxPercentage).divide(100).done()
