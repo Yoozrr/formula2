@@ -23,9 +23,15 @@ export function calculateVoucher ({ ...voucher }) {
   voucher.taxTotal = validVoucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.taxTotal), 0)
   voucher.total = math.sum(voucher.subTotal, voucher.taxTotal)
   voucher.balance = math.subtract(voucher.total, 0)
-  voucher.issueDate = startOfDay(voucher.issueDate)
-  voucher.voucherDate = startOfDay(voucher.voucherDate)
-  voucher.dueDate = calculateDueDate(voucher)
+  if (voucher.issueDate) {
+    voucher.issueDate = startOfDay(voucher.issueDate)
+  }
+  if (voucher.voucherDate) {
+    voucher.voucherDate = startOfDay(voucher.voucherDate)
+  }
+  if (voucher.issueDate && voucher.term) {
+    voucher.dueDate = calculateDueDate(voucher)
+  }
 
   return voucher
 }
