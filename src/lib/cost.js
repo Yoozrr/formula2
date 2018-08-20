@@ -128,7 +128,9 @@ export function summarizeCostItems (costItems) {
 
   for (let costItem of costItems) {
     totals.map(t => {
-      rtnObj[t] = math.add(costItem[t] || 0, rtnObj[t])
+      if (!costItem.isDeleted) {
+        rtnObj[t] = math.add(costItem[t] || 0, rtnObj[t])
+      }
     })
   }
 
@@ -148,7 +150,10 @@ export function sortCostItems (costItems) {
     let sequence = c.sequence || c.chargeItem.sequence
     let code = c.code || c.chargeItem.code
 
-    return parseInt(sequence) * 1000 + parseInt(code)
+    // Current issue is sorted by number.
+    return (c.isDeleted ? 10000000 : 0) +
+      (parseInt(sequence) * 1000) + 
+      parseInt(code)
   })
 }
 
