@@ -18,7 +18,7 @@ const getBookingVouchers = flow(
     mapFp((voucher) => {
       if (voucher && voucher.voucherItems) {
         return voucher.voucherItems.map(vi => {
-          vi.isCreditDebitNote = voucher.isCreditDebitNote
+          vi.isCreditNote = voucher.isCreditNote
           return vi
         })
       } else {
@@ -32,11 +32,11 @@ const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
   flow(
     filterFp((voucher) => voucher.status === voucherStatus && voucher.transactionType === transactionType),
     getVoucherItems,
-    filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid),
+    filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid && !voucherItem.isDeleted),
     reduceFp((sum, voucherItem) => {
       const viValue = math.multiply(voucherItem.quantity, voucherItem.rate)
       
-      if (voucherItem.isCreditDebitNote) {
+      if (voucherItem.isCreditNote) {
         return math.chain(sum).subtract(viValue).done().toFixed(2)
       } else {
         return math.chain(sum).add(viValue).done().toFixed(2)
