@@ -30,7 +30,7 @@ const getBookingVouchers = flow(
 
 const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
   flow(
-    filterFp((voucher) => voucher.status === voucherStatus && voucher.transactionType === transactionType),
+    filterFp((voucher) => voucherStatus.indexOf(voucher.status) >= 0 && voucher.transactionType === transactionType),
     getVoucherItems,
     filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid && !voucherItem.isDeleted),
     reduceFp((sum, voucherItem) => {
@@ -72,12 +72,10 @@ export function computeCostItems (costItems, vouchers) {
     ci.costTotal = math.multiply(ci.costRate, ci.quantity).toFixed(2)
     ci.estimatedProfit = math.subtract(ci.sellTotal || 0, ci.costTotal || 0).toFixed(2)
 
-    ci.accountPayable = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCPAY' })
-    ci.accountReceivable = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'APPROVED', transactionType: 'ACCREC' })
-    ci.accountPayableDraft = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCPAY' }) +
-      getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCPAY' })
-    ci.accountReceivableDraft = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'DRAFT', transactionType: 'ACCREC' }) +
-      getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: 'SUBMITTED', transactionType: 'ACCREC' })
+    ci.accountPayable = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: ['APPROVED', 'PARTIALLY_PAID', 'PAID'], transactionType: 'ACCPAY' })
+    ci.accountReceivable = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: ['APPROVED', 'PARTIALLY_PAID', 'PAID'], transactionType: 'ACCREC' })
+    ci.accountPayableDraft = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: ['DRAFT', 'SUBMITTED'], transactionType: 'ACCPAY' })
+    ci.accountReceivableDraft = getRate({ costItemUuid: ci.uuid, vouchers, voucherStatus: ['DRAFT', 'SUBMITTED'], transactionType: 'ACCREC' })
   
     // **** TEMP TO SIMULATE ACCRUALS!!!
     if (ci.accountPayable || ci.accountReceivable) {
