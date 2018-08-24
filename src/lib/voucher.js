@@ -1,6 +1,6 @@
 import * as math from 'mathjs'
 import { addDays, startOfDay } from 'date-fns'
-import { sortBy } from 'lodash'
+import { sortBy, isNumber } from 'lodash'
 
 export function calculateDueDate (voucher) {
   return addDays(startOfDay(voucher.issueDate), voucher.term)
@@ -29,7 +29,7 @@ export function calculateVoucher ({ ...voucher }) {
   if (voucher.voucherDate) {
     voucher.voucherDate = startOfDay(voucher.voucherDate)
   }
-  if (voucher.issueDate && voucher.term) {
+  if (voucher.issueDate && isNumber(voucher.term)) {
     voucher.dueDate = calculateDueDate(voucher)
   }
 
