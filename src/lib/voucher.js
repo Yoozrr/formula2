@@ -6,37 +6,52 @@ export function calculateDueDate (voucher) {
   return addDays(startOfDay(voucher.issueDate), voucher.term)
 }
 
-export function calculateVoucherItem ({ ...voucherItem }) {
-  voucherItem.rate = math.multiply(voucherItem.exchangeRate, voucherItem.baseRate)
-  voucherItem.subTotal = math.multiply(voucherItem.quantity, voucherItem.rate)
-  voucherItem.taxTotal = math.chain(voucherItem.subTotal).multiply(voucherItem.taxPercentage).divide(100).done()
-  voucherItem.total = math.add(voucherItem.subTotal, voucherItem.taxTotal)
-  return voucherItem
+export function calculateVoucherItem (voucherItem) {
+  let rate = math.multiply(voucherItem.exchangeRate, voucherItem.baseRate)
+  let subTotal = math.multiply(voucherItem.quantity, rate)
+  let taxTotal = math.chain(subTotal).multiply(voucherItem.taxPercentage).divide(100).done()
+  let total = math.add(subTotal, taxTotal)
+
+  return {
+    ...voucherItem,
+    rate,
+    subTotal,
+    taxTotal,
+    total
+  }
 }
 
-export function calculateVoucher ({ ...voucher }) {
-  const voucherItems = voucher.voucherItems || []
-  voucher.voucherItems = voucherItems.map(calculateVoucherItem)
-  const validVoucherItems = voucher.voucherItems.filter(vi => !vi.isDeleted)
+export function calculateVoucher (voucher) {
+  let newVoucher = { ...voucher }
 
-  voucher.subTotal = validVoucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.subTotal), 0)
-  voucher.taxTotal = validVoucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.taxTotal), 0)
-  voucher.total = math.sum(voucher.subTotal, voucher.taxTotal)
-  voucher.balance = math.subtract(voucher.total, 0)
-  if (voucher.issueDate) {
-    voucher.issueDate = startOfDay(voucher.issueDate)
-  }
-  if (voucher.voucherDate) {
-    voucher.voucherDate = startOfDay(voucher.voucherDate)
-  }
-  if (voucher.issueDate && isNumber(voucher.term)) {
-    voucher.dueDate = calculateDueDate(voucher)
+  const voucherItems = newVoucher.voucherItems || []
+  newVoucher.voucherItems = voucherItems.map(calculateVoucherItem)
+
+  const validVoucherItems = newVoucher.voucherItems.filter(vi => !vi.isDeleted)
+  
+  newVoucher.subTotal = validVoucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.subTotal), 0)
+  newVoucher.taxTotal = validVoucherItems.reduce((sum, voucherItem) => math.sum(sum, voucherItem.taxTotal), 0)
+  newVoucher.total = math.sum(newVoucher.subTotal, newVoucher.taxTotal)
+  newVoucher.balance = math.subtract(newVoucher.total, 0)
+  
+  if (newVoucher.issueDate) {
+    newVoucher.issueDate = startOfDay(newVoucher.issueDate)
   }
 
-  return voucher
+  if (newVoucher.voucherDate) {
+    newVoucher.voucherDate = startOfDay(newVoucher.voucherDate)
+  }
+
+  if (newVoucher.issueDate && isNumber(newVoucher.term)) {
+    newVoucher.dueDate = calculateDueDate(voucher)
+  }
+
+  return newVoucher
 }
 
-export function calculateVoucherWithBalance ({ voucher: { ...voucher }, payments }) {
+export function calculateVoucherWithBalance (params) {
+  let { voucher, payments } = params
+
   const voucherItems = voucher.voucherItems || []
   voucher.voucherItems = voucherItems.map(calculateVoucherItem)
   const validVoucherItems = voucher.voucherItems.filter(vi => !vi.isDeleted)
