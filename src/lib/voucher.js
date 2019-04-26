@@ -81,12 +81,22 @@ export function sortVoucherItems (voucherItems) {
     if (!vi.costItem || !vi.costItem.chargeItem) {
       throw new Error(`Cannot sort Voucher Items without Chargeitems.`)
     }
-    let sequence = vi.costItem.chargeItem.sequence
-    let code = vi.costItem.chargeItem.code
 
-    // Current issue is sorted by number.
-    return (vi.isDeleted ? 10000000 : 0) +
-      (parseInt(sequence) * 1000) +
-      parseInt(code)
+    const deletedField = (vi.isDeleted ? '10000000' : '0')
+    const jobField = (vi.job && (vi.job.no || vi.job.uuid)) || ''
+
+    const chargeItem = vi.costItem.chargeItem
+
+    const chargeItemField = (
+      (chargeItem.sequence && chargeItem.sequence.padStart(10, '0')) ||
+      chargeItem.name ||
+      chargeItem.code ||
+      ''
+    )
+
+    const unitField = vi.unit || ''
+    const sizeField = vi.size || ''
+
+    return `${deletedField}-${jobField}-${chargeItemField}-${unitField}-${sizeField}`
   })
 }

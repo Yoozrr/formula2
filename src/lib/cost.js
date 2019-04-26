@@ -154,13 +154,21 @@ export function summarizeCostItems (costItems) {
 }
 
 export function sortCostItems (costItems) {
-  return sortBy(costItems, (c) => {
-    let sequence = c.sequence || c.chargeItem.sequence
-    let code = c.code || c.chargeItem.code
+  return sortBy(costItems, (ci) => {
+    const deletedField = (ci.isDeleted ? '10000000' : '0')
 
-    // Current issue is sorted by number.
-    return (c.isDeleted ? 10000000 : 0) +
-      (parseInt(sequence) * 1000) +
-      parseInt(code)
+    const chargeItem = ci.chargeItem
+
+    const chargeItemField = (
+      (chargeItem.sequence && chargeItem.sequence.padStart(10, '0')) ||
+      chargeItem.name ||
+      chargeItem.code ||
+      ''
+    )
+
+    const unitField = ci.unit || ''
+    const sizeField = ci.size || ''
+
+    return `${deletedField}-${chargeItemField}-${unitField}-${sizeField}`
   })
 }
