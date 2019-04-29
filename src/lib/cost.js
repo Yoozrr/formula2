@@ -160,9 +160,9 @@ export function sortCostItems (costItems) {
     const chargeItem = ci.chargeItem
 
     const chargeItemField = (
-      (chargeItem.sequence && chargeItem.sequence.padStart(10, '0')) ||
-      chargeItem.name ||
-      chargeItem.code ||
+      ((ci.sequence) || (chargeItem && chargeItem.sequence && chargeItem.sequence.padStart(10, '0'))) ||
+      (chargeItem && chargeItem.name) ||
+      (ci.code || (chargeItem && chargeItem.code)) ||
       ''
     )
 
