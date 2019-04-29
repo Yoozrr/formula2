@@ -7,6 +7,9 @@ Utilities for Shipx
 `npm run-script watch`
 
 ### publish
+Important!! Ensure building first before publishing.
+
+`npm run build`
 `npm publish`
 
 ## NPM link
