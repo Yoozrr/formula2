@@ -47,18 +47,18 @@ const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
 
 export function calculateGrossProfit (costItem) {
   // console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')
-  costItem.sellRate = math.multiply(costItem.sellBaseRate, costItem.sellExchangeRate)
-  costItem.sellTotal = math.multiply(costItem.sellRate, costItem.quantity)
-  costItem.costRate = math.multiply(costItem.costBaseRate, costItem.costExchangeRate)
-  costItem.costTotal = math.multiply(costItem.costRate, costItem.quantity)
-  costItem.estimatedProfit = math.subtract(costItem.sellTotal || 0, costItem.costTotal || 0)
+  costItem.sellRate = math.multiply(math.bignumber(costItem.sellBaseRate), math.bignumber(costItem.sellExchangeRate))
+  costItem.sellTotal = math.multiply(math.bignumber(costItem.sellRate), math.bignumber(costItem.quantity))
+  costItem.costRate = math.multiply(math.bignumber(costItem.costBaseRate), math.bignumber(costItem.costExchangeRate))
+  costItem.costTotal = math.multiply(math.bignumber(costItem.costRate), math.bignumber(costItem.quantity))
+  costItem.estimatedProfit = math.subtract(math.bignumber(costItem.sellTotal) || 0, math.bignumber(costItem.costTotal) || 0)
   // Gross profit computed if no cost or both AP and AR exisit
   costItem.grossProfit = costItem.costTotal === 0 || (costItem.accountReceivable > 0 && costItem.accountPayable > 0) ?
-    math.chain(costItem.accountReceivable || 0)
-      .subtract(costItem.accountPayable || 0)
-      .subtract(costItem.cashBook || 0)
-      .subtract(costItem.accrual || 0)
-      .subtract(costItem.blankCheque || 0)
+    math.chain(math.bignumber(costItem.accountReceivable) || 0)
+      .subtract(math.bignumber(costItem.accountPayable) || 0)
+      .subtract(math.bignumber(costItem.cashBook) || 0)
+      .subtract(math.bignumber(costItem.accrual) || 0)
+      .subtract(math.bignumber(costItem.blankCheque) || 0)
       .done() :
     0
 
@@ -67,11 +67,11 @@ export function calculateGrossProfit (costItem) {
 
 export function computeCostItems (costItems, vouchers, currency) {
   return costItems.map((ci) => {
-    ci.sellRate = math.multiply(ci.sellBaseRate, ci.sellExchangeRate)
-    ci.sellTotal = math.multiply(ci.sellRate, ci.quantity)
-    ci.costRate = math.multiply(ci.costBaseRate, ci.costExchangeRate)
-    ci.costTotal = math.multiply(ci.costRate, ci.quantity)
-    ci.estimatedProfit = math.subtract(ci.sellTotal || 0, ci.costTotal || 0)
+    ci.sellRate = math.multiply(math.bignumber(ci.sellBaseRate), math.bignumber(ci.sellExchangeRate))
+    ci.sellTotal = math.multiply(math.bignumber(ci.sellRate), math.bignumber(ci.quantity))
+    ci.costRate = math.multiply(math.bignumber(ci.costBaseRate), math.bignumber(ci.costExchangeRate))
+    ci.costTotal = math.multiply(math.bignumber(ci.costRate), math.bignumber(ci.quantity))
+    ci.estimatedProfit = math.subtract(math.bignumber(ci.sellTotal) || 0, math.bignumber(ci.costTotal) || 0)
 
     ci.accountPayable = getRate({
       costItemUuid: ci.uuid,
@@ -102,8 +102,11 @@ export function computeCostItems (costItems, vouchers, currency) {
     // GP = Only compute after AR
     // (SellTotal > AR ? SellTotal : AR) -
     // (CostTotal > (AP + Accrual) ? CostTotal-Accrual : (AP + Accrual))
-    const sellAmt = ci.sellTotal > ci.accountReceivable ? ci.sellTotal || 0 : ci.accountReceivable || 0
-    const costAmt = ci.costTotal > (math.add(ci.accountPayable || 0, ci.accrual || 0)) ? math.subtract(ci.costTotal || 0, ci.accrual || 0) : math.add(ci.accountPayable || 0, ci.accrual || 0)
+    const sellAmt = ci.sellTotal > ci.accountReceivable ? math.bignumber(ci.sellTotal) || 0 : math.bignumber(ci.accountReceivable) || 0
+    const costAmt = ci.costTotal > (math.add(math.bignumber(ci.accountPayable) || 0, math.bignumber(ci.accrual) || 0))
+      ? math.subtract(math.bignumber(ci.costTotal) || 0, math.bignumber(ci.accrual) || 0) 
+      : math.add(math.bignumber(ci.accountPayable) || 0, math.bignumber(ci.accrual) || 0)
+
     ci.grossProfit = ci.accountReceivable > 0 ?
       math.chain(sellAmt)
       .subtract(costAmt)
@@ -114,9 +117,9 @@ export function computeCostItems (costItems, vouchers, currency) {
     //   Or show If EstCost < AP (neg accrual)
 
     ci.shortBill = ci.accrual < 0 ?
-      math.chain(ci.costTotal)
-      .subtract(ci.accountPayable || 0)
-      .subtract(ci.accountPayableDraft || 0)
+      math.chain(math.bignumber(ci.costTotal))
+      .subtract(math.bignumber(ci.accountPayable) || 0)
+      .subtract(math.bignumber(ci.accountPayableDraft) || 0)
       .done() : 0
 
     ci.cashBook = 0
@@ -137,7 +140,7 @@ export function summarizeCostItems (costItems) {
   for (let costItem of costItems) {
     totals.map(t => {
       if (!costItem.isDeleted) {
-        rtnObj[t] = math.add(costItem[t] || 0, rtnObj[t])
+        rtnObj[t] = math.add(math.bignumber(costItem[t]) || 0, math.bignumber(rtnObj[t]))
       }
     })
   }
