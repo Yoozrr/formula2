@@ -1,7 +1,6 @@
 import * as math from 'mathjs'
 import { find, countBy, sortBy, flow, isEmpty, mapValues } from 'lodash'
-import { map as mapFp, filter as filterFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
-import flattenFp from 'lodash/fp/flatten'
+import { map as mapFp, filter as filterFp, flatten as flattenFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
 
 const getBookingVouchers = flow(
   mapFp((booking) => {
