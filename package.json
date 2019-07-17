@@ -1,6 +1,6 @@
 {
   "name": "@shipx/formula",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "description": "Utilities for Shipx",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",

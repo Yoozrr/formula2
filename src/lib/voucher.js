@@ -1,11 +1,11 @@
 import * as math from 'mathjs'
-import { addDays, startOfDay } from 'date-fns'
+import { addDays } from 'date-fns'
 import { sortBy, isNumber } from 'lodash'
 
 import { opBigNumber } from "./opBigNumber"
 
 export function calculateDueDate (voucher) {
-  return addDays(startOfDay(voucher.issueDate), voucher.term)
+  return addDays(voucher.issueDate || new Date(), voucher.term || 0)
 }
 
 export function calculateVoucherItem (voucherItem) {
@@ -71,17 +71,7 @@ export function calculateVoucher (voucher) {
   newVoucher.total = opBigNumber(math.sum, newVoucher.subTotal, newVoucher.taxTotal)
   newVoucher.balance = opBigNumber(math.subtract, newVoucher.total, 0)
 
-  if (newVoucher.issueDate) {
-    newVoucher.issueDate = startOfDay(newVoucher.issueDate)
-  }
-
-  if (newVoucher.voucherDate) {
-    newVoucher.voucherDate = startOfDay(newVoucher.voucherDate)
-  }
-
-  if (newVoucher.issueDate && isNumber(newVoucher.term)) {
-    newVoucher.dueDate = calculateDueDate(voucher)
-  }
+  newVoucher.dueDate = calculateDueDate(voucher)
 
   return newVoucher
 }
@@ -104,9 +94,7 @@ export function calculateVoucherWithBalance (params) {
   )
 
   voucher.total = opBigNumber(math.sum, voucher.subTotal, voucher.taxTotal)
-  
-  voucher.issueDate = startOfDay(voucher.issueDate)
-  voucher.voucherDate = startOfDay(voucher.voucherDate)
+
   voucher.dueDate = calculateDueDate(voucher)
 
   const validPayments = payments.filter(vi => vi.status === 'PAID')
