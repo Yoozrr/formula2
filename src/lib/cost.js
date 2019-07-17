@@ -55,11 +55,11 @@ export function calculateGrossProfit (costItem) {
 
   // Gross profit computed if no cost or both AP and AR exisit
   costItem.grossProfit = costItem.costTotal === 0 || (costItem.accountReceivable > 0 && costItem.accountPayable > 0) ?
-    math.chain(math.bignumber(costItem.accountReceivable) || 0)
-      .subtract(math.bignumber(costItem.accountPayable) || 0)
-      .subtract(math.bignumber(costItem.cashBook) || 0)
-      .subtract(math.bignumber(costItem.accrual) || 0)
-      .subtract(math.bignumber(costItem.blankCheque) || 0)
+    math.chain(math.bignumber(costItem.accountReceivable || 0))
+      .subtract(math.bignumber(costItem.accountPayable || 0))
+      .subtract(math.bignumber(costItem.cashBook || 0))
+      .subtract(math.bignumber(costItem.accrual || 0))
+      .subtract(math.bignumber(costItem.blankCheque || 0))
       .done() :
     0
 
