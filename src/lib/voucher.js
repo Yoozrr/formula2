@@ -41,7 +41,7 @@ export function calculateVoucherItem (voucherItem) {
 }
 
 export function calculateVoucher (paramVoucher) {
-  let voucher = { ...voucparamVoucherher }
+  let voucher = { ...paramVoucher }
 
   const voucherItems = voucher.voucherItems || []
   voucher.voucherItems = voucherItems.map(calculateVoucherItem)
