@@ -45,7 +45,6 @@ export function calculateVoucher (voucher) {
 
   const voucherItems = newVoucher.voucherItems || []
   newVoucher.voucherItems = voucherItems.map(calculateVoucherItem)
-
   const validVoucherItems = newVoucher.voucherItems.filter(vi => !vi.isDeleted)
 
   newVoucher.subTotal = validVoucherItems.reduce(
@@ -87,9 +86,19 @@ export function calculateVoucherWithBalance (params) {
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.subTotal),
     0
   )
+
+  newVoucher.baseSubTotal = validVoucherItems.reduce(
+    (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.baseSubTotal),
+    0
+  )
   
   voucher.taxTotal = validVoucherItems.reduce(
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.taxTotal),
+    0
+  )
+  
+  newVoucher.baseTaxTotal = validVoucherItems.reduce(
+    (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.baseTaxTotal),
     0
   )
 
