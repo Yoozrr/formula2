@@ -77,6 +77,8 @@ export function calculateVoucher (paramVoucher) {
     0
   )
   
+  voucher.localTotal = opBigNumber(math.sum, voucher.localSubTotal, voucher.localTaxTotal)
+
   voucher.total = opBigNumber(math.sum, voucher.subTotal, voucher.taxTotal)
   
   voucher.dueDate = calculateDueDate(voucher)
