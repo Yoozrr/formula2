@@ -9,25 +9,29 @@ export function calculateDueDate (voucher) {
 }
 
 export function calculateVoucherItem (voucherItem) {
-  let rate = opBigNumber(math.multiply, voucherItem.exchangeRate, voucherItem.baseRate)
-  let subTotal = opBigNumber(math.multiply, voucherItem.quantity, rate)
-  let baseSubTotal = opBigNumber(math.multiply, voucherItem.quantity, voucherItem.baseRate)
+  const rate = opBigNumber(math.multiply, voucherItem.exchangeRate || 1, voucherItem.baseRate)
+  const subTotal = opBigNumber(math.multiply, voucherItem.quantity, rate)
+  const baseSubTotal = opBigNumber(math.multiply, voucherItem.quantity, voucherItem.baseRate)
 
-  let taxTotal = math.number(
+  const taxTotal = math.number(
     math.chain(math.bignumber(subTotal))
       .multiply(math.bignumber(voucherItem.taxPercentage))
       .divide(100)
       .done()
   )
 
-  let baseTaxTotal = math.number(
+  const baseTaxTotal = math.number(
     math.chain(math.bignumber(baseSubTotal))
       .multiply(math.bignumber(voucherItem.taxPercentage))
       .divide(100)
       .done()
   )
 
-  let total = opBigNumber(math.add, subTotal, taxTotal)
+  const total = opBigNumber(math.add, subTotal, taxTotal)
+
+  const localSubTotal = math.multiply(subTotal, voucherItem.localExchangeRate || 1)
+  const localTaxTotal = math.multiply(taxTotal, voucherItem.localExchangeRate || 1)
+  const localTotal = math.add(localSubTotal, localTaxTotal)
 
   return {
     ...voucherItem,
@@ -36,7 +40,10 @@ export function calculateVoucherItem (voucherItem) {
     baseSubTotal,
     taxTotal,
     baseTaxTotal,
-    total
+    total,
+    localSubTotal,
+    localTaxTotal,
+    localTotal
   }
 }
 
