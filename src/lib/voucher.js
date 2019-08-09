@@ -1,6 +1,6 @@
 import * as math from 'mathjs'
 import { addDays } from 'date-fns'
-import { sortBy, isNumber } from 'lodash'
+import { isUndefined, sortBy, isNumber } from 'lodash'
 
 import { opBigNumber } from "./opBigNumber"
 /******************************
@@ -10,10 +10,26 @@ export function calculateDueDate (voucher) {
   return addDays(voucher.issueDate || new Date(), voucher.term || 0)
 }
 
+const validateVoucherItem = (vi) => {
+  const validPairs = [ 'isDeleted', 'baseRate', 'quantity', 'taxPercentage']
+
+  validPairs.map(val => {
+    if (val === 'isDeleted') {
+      if (isUndefined(vi[val])) {
+        throw new Error(`Incomplete parameters for VoucherItem: ${val}`)
+      } 
+    } else if(!isNumber(parseFloat(vi[val]))) {
+      throw new Error(`Incomplete parameters for VoucherItem: ${val}`)
+    }
+  })
+}
+
 /******************************
  * Calculate Due Date, returns a copy of the voucherItem
  ******************************/
 export function calculateVoucherItem (voucherItem) {
+  validateVoucherItem(voucherItem)
+
   const rate = opBigNumber(math.multiply, voucherItem.exchangeRate || 1, voucherItem.baseRate)
   // ********** SubTotals
   const baseSubTotal = opBigNumber(math.multiply, voucherItem.quantity, voucherItem.baseRate)
@@ -104,7 +120,6 @@ export function calculateVoucher (paramVoucher) {
   voucher.total = opBigNumber(math.sum, voucher.subTotal, voucher.taxTotal)
 
   voucher.localTotal = opBigNumber(math.sum, voucher.localSubTotal, voucher.localTaxTotal)
-
   
   voucher.dueDate = calculateDueDate(voucher)
 
