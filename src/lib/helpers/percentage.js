@@ -1,7 +1,7 @@
 import * as math from 'mathjs'
 import { opBigNumber } from "./opBigNumber"
 
-const defaultFnc = ({ accountReceivable, grossProfit }) => {
+export default ({ accountReceivable, grossProfit }) => {
   const percentage = accountReceivable
     ? opBigNumber(
       math.multiply, 
@@ -10,8 +10,4 @@ const defaultFnc = ({ accountReceivable, grossProfit }) => {
     : 0
   
   return percentage
-}
-
-export default {
-  default: defaultFnc
 }
