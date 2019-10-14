@@ -2,7 +2,10 @@ import * as math from 'mathjs'
 import { find, countBy, sortBy, flow, isEmpty, mapValues } from 'lodash'
 import { map as mapFp, filter as filterFp, flatten as flattenFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
 
-import { opBigNumber } from "./opBigNumber"
+import { opBigNumber } from "./helpers/opBigNumber"
+import grossProfit from './helpers/grossProfit'
+import percentage from './helpers/percentage'
+import shortBill from './helpers/shortBill'
 
 const getBookingVouchers = flow(
   mapFp((booking) => {
@@ -15,19 +18,19 @@ const getBookingVouchers = flow(
   flattenFp
 )
 
-  const getVoucherItems = flow(
-    mapFp((voucher) => {
-      if (voucher && voucher.voucherItems) {
-        return voucher.voucherItems.map(vi => {
-          vi.isCreditNote = voucher.isCreditNote
-          return vi
-        })
-      } else {
-        return []
-      }
-    }),
-    flattenFp
-  )
+const getVoucherItems = flow(
+  mapFp((voucher) => {
+    if (voucher && voucher.voucherItems) {
+      return voucher.voucherItems.map(vi => {
+        vi.isCreditNote = voucher.isCreditNote
+        return vi
+      })
+    } else {
+      return []
+    }
+  }),
+  flattenFp
+)
 
 const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
   flow(
@@ -45,36 +48,44 @@ const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
     }, 0)
   )(vouchers)
 
-export function calculateGrossProfit (costItem) {
-  // console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')  
-  costItem.sellRate = opBigNumber(math.multiply, costItem.sellBaseRate, costItem.sellExchangeRate)
-  costItem.sellTotal = opBigNumber(math.multiply, costItem.sellRate, costItem.quantity)
-  costItem.costRate = opBigNumber(math.multiply, costItem.costBaseRate, costItem.costExchangeRate)
-  costItem.costTotal = opBigNumber(math.multiply, costItem.costRate, costItem.quantity)
-  costItem.estimatedProfit = opBigNumber(math.subtract, costItem.sellTotal || 0, costItem.costTotal || 0)
-
-  // Gross profit computed if no cost or both AP and AR exisit
-  costItem.grossProfit = costItem.costTotal === 0 || (costItem.accountReceivable > 0 && costItem.accountPayable > 0) ?
-    math.chain(math.bignumber(costItem.accountReceivable || 0))
-      .subtract(math.bignumber(costItem.accountPayable || 0))
-      .subtract(math.bignumber(costItem.cashBook || 0))
-      .subtract(math.bignumber(costItem.accrual || 0))
-      .subtract(math.bignumber(costItem.blankCheque || 0))
-      .done() :
-    0
-
-  costItem.grossProfit = math.number(costItem.grossProfit)
-
-  return costItem
+  
+const getFunction = (fnc, optionName) => {
+  return fnc[optionName] || fnc.default
 }
 
-export function computeCostItems (costItems, vouchers, currency) {
+const getSellCostTotal = ({ quantity, 
+  sellBaseRate, sellExchangeRate, 
+  costBaseRate, costExchangeRate }) => {
+  const sellRate = opBigNumber(math.multiply, sellBaseRate, sellExchangeRate)
+  const sellTotal = opBigNumber(math.multiply, sellRate, quantity)
+  const costRate = opBigNumber(math.multiply, costBaseRate, costExchangeRate)
+  const costTotal = opBigNumber(math.multiply, costRate, quantity)
+  const estimatedProfit = opBigNumber(math.subtract, sellTotal || 0, costTotal || 0)
+
+  return {
+    sellRate,
+    sellTotal,
+    costRate,
+    costTotal,
+    estimatedProfit
+  }
+}
+
+export function calculateGrossProfit (ci, options = {}) {
+  // console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')  
+    ci = Object.assign(ci, getSellCostTotal(ci))
+
+    ci.grossProfit = getFunction(grossProfit, options.grossProfit)(ci)
+
+  // Compute percentage
+  ci.percentage = getFunction(percentage, options.percentage)(ci)
+
+  return ci
+}
+
+export function computeCostItems (costItems, vouchers, currency, options = {}) {
   return costItems.map((ci) => {
-    ci.sellRate = opBigNumber(math.multiply, ci.sellBaseRate, ci.sellExchangeRate)
-    ci.sellTotal = opBigNumber(math.multiply, ci.sellRate, ci.quantity)
-    ci.costRate = opBigNumber(math.multiply, ci.costBaseRate, ci.costExchangeRate)
-    ci.costTotal = opBigNumber(math.multiply, ci.costRate, ci.quantity)
-    ci.estimatedProfit = opBigNumber(math.subtract, ci.sellTotal || 0, ci.costTotal || 0)
+    ci = Object.assign(ci, getSellCostTotal(ci))
 
     ci.accountPayable = getRate({
       costItemUuid: ci.uuid,
@@ -101,35 +112,13 @@ export function computeCostItems (costItems, vouchers, currency) {
       transactionType: 'ACCREC'
     })
 
-    // Gross profit computed if no cost or both AP and AR exisit
-    // GP = Only compute after AR
-    // (SellTotal > AR ? SellTotal : AR) -
-    // (CostTotal > (AP + Accrual) ? CostTotal-Accrual : (AP + Accrual))
-    const sellAmt = ci.sellTotal > ci.accountReceivable 
-      ? math.bignumber(ci.sellTotal || 0 )
-      : math.bignumber(ci.accountReceivable || 0)
+    ci.grossProfit = getFunction(grossProfit, options.grossProfit)(ci)
 
-    const costAmt = ci.costTotal > (math.add(math.bignumber(ci.accountPayable || 0), math.bignumber(ci.accrual || 0)))
-      ? math.subtract(math.bignumber(ci.costTotal || 0), math.bignumber(ci.accrual || 0))
-      : math.add(math.bignumber(ci.accountPayable || 0), math.bignumber(ci.accrual || 0))
+    // Compute percentage
+    ci.percentage = getFunction(percentage, options.percentage)(ci)
 
-    ci.grossProfit = ci.accountReceivable > 0 
-      ? math.chain(sellAmt)
-        .subtract(costAmt)
-        .done() 
-      : 0
-    ci.grossProfit = math.number(ci.grossProfit)
-
-    // Short Bill = cost - AP - APDraft
-    //   show If AR < AP (neg accrual)
-    //   Or show If EstCost < AP (neg accrual)
-
-    ci.shortBill = ci.accrual < 0 ?
-      math.chain(math.bignumber(ci.costTotal))
-      .subtract(math.bignumber(ci.accountPayable || 0))
-      .subtract(math.bignumber(ci.accountPayableDraft || 0))
-      .done() : 0
-    ci.shortBill = math.number(ci.shortBill)
+    // Compute shortBill
+    ci.shortBill = getFunction(shortBill, options.shortBill)(ci)
 
     ci.cashBook = 0
     ci.blankCheque = 0
