@@ -2,7 +2,7 @@ import * as math from 'mathjs'
 import { addDays } from 'date-fns'
 import { isUndefined, sortBy, isNumber } from 'lodash'
 
-import { opBigNumber } from "./opBigNumber"
+import { opBigNumber } from "./helpers/opBigNumber"
 /******************************
  * Calculate Due Date
  ******************************/
