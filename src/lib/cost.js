@@ -1,22 +1,22 @@
 import * as math from 'mathjs'
-import { find, countBy, sortBy, flow, isEmpty, mapValues } from 'lodash'
-import { map as mapFp, filter as filterFp, flatten as flattenFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
+import { sortBy, flow } from 'lodash'
+import { map as mapFp, filter as filterFp, flatten as flattenFp, reduce as reduceFp } from 'lodash/fp'
 
 import { opBigNumber } from "./helpers/opBigNumber"
 import * as grossProfit from './helpers/grossProfit'
 import * as percentage from './helpers/percentage'
 import * as shortBill from './helpers/shortBill'
 
-const getBookingVouchers = flow(
-  mapFp((booking) => {
-    if (booking && booking.vouchers) {
-      return booking.vouchers
-    } else {
-      return []
-    }
-  }),
-  flattenFp
-)
+// const getBookingVouchers = flow(
+//   mapFp((booking) => {
+//     if (booking && booking.vouchers) {
+//       return booking.vouchers
+//     } else {
+//       return []
+//     }
+//   }),
+//   flattenFp
+// )
 
 const getVoucherItems = flow(
   mapFp((voucher) => {
@@ -34,12 +34,16 @@ const getVoucherItems = flow(
 
 const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
   flow(
+    // @ts-ignore
     filterFp((voucher) => voucherStatus.indexOf(voucher.status) >= 0 && voucher.transactionType === transactionType),
     getVoucherItems,
+    // @ts-ignore
     filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid && !voucherItem.isDeleted),
     reduceFp((sum, voucherItem) => {
+      // @ts-ignore
       const viValue = voucherItem.localSubTotal
 
+      // @ts-ignore
       const result = voucherItem.isCreditNote 
         ? opBigNumber(math.subtract, sum, viValue)
         : opBigNumber(math.add, sum, viValue)
@@ -83,7 +87,7 @@ export function calculateGrossProfit (ci, options = {}) {
   return ci
 }
 
-export function computeCostItems (costItems, vouchers, currency, options = {}) {
+export function computeCostItems (costItems, vouchers, {}, options = {}) {
   return costItems.map((ci) => {
     ci = Object.assign(ci, getSellCostTotal(ci))
 
