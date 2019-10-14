@@ -1,7 +1,6 @@
 import * as math from 'mathjs'
-import { opBigNumber } from "./opBigNumber"
 
-const defaultFnc = ({ accrual, costTotal, accountPayable, accountPayableDraft }) => {
+export default ({ accrual, costTotal, accountPayable, accountPayableDraft }) => {
   // Short Bill = cost - AP - APDraft
   //   show If AR < AP (neg accrual)
   //   Or show If EstCost < AP (neg accrual)
@@ -14,8 +13,4 @@ const defaultFnc = ({ accrual, costTotal, accountPayable, accountPayableDraft })
   shortBill = math.number(shortBill)
 
   return shortBill
-}
-
-export default {
-  default: defaultFnc
 }

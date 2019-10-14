@@ -3,9 +3,9 @@ import { find, countBy, sortBy, flow, isEmpty, mapValues } from 'lodash'
 import { map as mapFp, filter as filterFp, flatten as flattenFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
 
 import { opBigNumber } from "./helpers/opBigNumber"
-import grossProfit from './helpers/grossProfit'
-import percentage from './helpers/percentage'
-import shortBill from './helpers/shortBill'
+import * as grossProfit from './helpers/grossProfit'
+import * as percentage from './helpers/percentage'
+import * as shortBill from './helpers/shortBill'
 
 const getBookingVouchers = flow(
   mapFp((booking) => {
