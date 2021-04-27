@@ -19,7 +19,7 @@ import * as shortBill from './helpers/shortBill'
 // )
 
 const getVoucherItems = flow(
-  mapFp((voucher) => {
+  mapFp((voucher:any) => {
     if (voucher && voucher.voucherItems) {
       return voucher.voucherItems.map(vi => {
         vi.isCreditNote = voucher.isCreditNote
@@ -34,31 +34,28 @@ const getVoucherItems = flow(
 
 const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
   flow(
-    // @ts-ignore
-    filterFp((voucher) => voucherStatus.indexOf(voucher.status) >= 0 && voucher.transactionType === transactionType),
+    filterFp((voucher:any) => voucherStatus.indexOf(voucher.status) >= 0 && voucher.transactionType === transactionType),
     getVoucherItems,
     // @ts-ignore
-    filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid && !voucherItem.isDeleted),
-    reduceFp((sum, voucherItem) => {
-      // @ts-ignore
+    filterFp((voucherItem:any) => voucherItem.costItem.uuid === costItemUuid && !voucherItem.isDeleted),
+    reduceFp((sum, voucherItem:any) => {
       const viValue = voucherItem.localSubTotal
 
-      // @ts-ignore
-      const result = voucherItem.isCreditNote 
+      const result = voucherItem.isCreditNote
         ? opBigNumber(math.subtract, sum, viValue)
         : opBigNumber(math.add, sum, viValue)
 
       return result
     }, 0)
+  // @ts-ignore
   )(vouchers)
 
-  
 const getFunction = (fnc, optionName) => {
   return fnc[optionName] || fnc.default
 }
 
-const getSellCostTotal = ({ quantity, 
-  sellBaseRate, sellExchangeRate, 
+const getSellCostTotal = ({ quantity,
+  sellBaseRate, sellExchangeRate,
   costBaseRate, costExchangeRate }) => {
   const sellRate = opBigNumber(math.multiply, sellBaseRate, sellExchangeRate)
   const sellTotal = opBigNumber(math.multiply, sellRate, quantity)
@@ -75,8 +72,8 @@ const getSellCostTotal = ({ quantity,
   }
 }
 
-export function calculateGrossProfit (ci, options = {}) {
-  // console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')  
+export function calculateGrossProfit (ci, options:any = {}) {
+  // console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')
     ci = Object.assign(ci, getSellCostTotal(ci))
 
     ci.grossProfit = getFunction(grossProfit, options.grossProfit)(ci)
@@ -87,7 +84,8 @@ export function calculateGrossProfit (ci, options = {}) {
   return ci
 }
 
-export function computeCostItems (costItems, vouchers, {}, options = {}) {
+// @ts-ignore
+export function computeCostItems (costItems, vouchers, currency:any = {}, options:any = {}) {
   return costItems.map((ci) => {
     ci = Object.assign(ci, getSellCostTotal(ci))
 
@@ -132,7 +130,7 @@ export function computeCostItems (costItems, vouchers, {}, options = {}) {
 }
 
 export function summarizeCostItems (costItems) {
-  const rtnObj = {}
+  const rtnObj:any = {}
   const totals = ['estimatedProfit', 'grossProfit', 'costTotal', 'sellTotal', 'accrual', 'accountPayable', 'accountReceivable', 'accountPayableDraft', 'accountReceivableDraft', 'shortBill']
 
   totals.map(t => {
@@ -151,11 +149,11 @@ export function summarizeCostItems (costItems) {
     rtnObj[t] = rtnObj[t]
   })
 
-  rtnObj.shortBillPercentage = rtnObj.sellTotal > 0 
+  rtnObj.shortBillPercentage = rtnObj.sellTotal > 0
     ? math.chain(math.bignumber(rtnObj.shortBill))
       .divide(math.bignumber(rtnObj.sellTotal))
       .multiply(100)
-      .done() 
+      .done()
     : 0
   rtnObj.shortBillPercentage = math.number(rtnObj.shortBillPercentage)
 

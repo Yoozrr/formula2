@@ -17,7 +17,7 @@ const validateVoucherItem = (vi) => {
     if (val === 'isDeleted') {
       if (isUndefined(vi[val])) {
         throw new Error(`Incomplete parameters for VoucherItem: ${val}`)
-      } 
+      }
     } else if(!isNumber(parseFloat(vi[val]))) {
       throw new Error(`Incomplete parameters for VoucherItem: ${val}`)
     }
@@ -33,7 +33,7 @@ export function calculateVoucherItem (voucherItem) {
   const rate = opBigNumber(math.multiply, voucherItem.exchangeRate || 1, voucherItem.baseRate)
   // ********** SubTotals
   const baseSubTotal = opBigNumber(math.multiply, voucherItem.quantity, voucherItem.baseRate)
-  const subTotal = opBigNumber(math.multiply, voucherItem.quantity, rate)
+  const subTotal = math.round(opBigNumber(math.multiply, voucherItem.quantity, rate), 2)
 
   const localSubTotal = math.multiply(subTotal, voucherItem.localExchangeRate || 1)
 
@@ -88,7 +88,7 @@ export function calculateVoucher (paramVoucher) {
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.baseSubTotal),
     0
   )
-  
+
   voucher.subTotal = validVoucherItems.reduce(
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.subTotal),
     0
@@ -100,7 +100,7 @@ export function calculateVoucher (paramVoucher) {
   )
 
   // ********** Taxes
-  
+
   voucher.baseTaxTotal = validVoucherItems.reduce(
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.baseTaxTotal),
     0
@@ -115,12 +115,12 @@ export function calculateVoucher (paramVoucher) {
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.localTaxTotal),
     0
   )
- 
+
   // ********** Totals
   voucher.total = opBigNumber(math.sum, voucher.subTotal, voucher.taxTotal)
 
   voucher.localTotal = opBigNumber(math.sum, voucher.localSubTotal, voucher.localTaxTotal)
-  
+
   voucher.dueDate = calculateDueDate(voucher)
 
   voucher.balance = opBigNumber(math.subtract, voucher.total, 0)
@@ -142,7 +142,7 @@ export function calculateVoucherWithBalance (params) {
     (sum, vp) => opBigNumber(math.sum, sum, vp.amount),
     0
   )
-  
+
   calculatedVoucher.balance = opBigNumber(math.subtract, calculatedVoucher.total, totalVoucherPayment)
 
   return calculatedVoucher
