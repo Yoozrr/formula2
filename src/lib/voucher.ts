@@ -3,22 +3,23 @@ import { addDays } from 'date-fns'
 import { isUndefined, sortBy, isNumber } from 'lodash'
 
 import { opBigNumber } from "./helpers/opBigNumber"
+import { Payment, Voucher, VoucherItem } from '../types/types'
 /******************************
  * Calculate Due Date
  ******************************/
-export function calculateDueDate (voucher) {
+export function calculateDueDate(voucher: Voucher) {
   return addDays(voucher.issueDate || new Date(), voucher.term || 0)
 }
 
 const validateVoucherItem = (vi) => {
-  const validPairs = [ 'isDeleted', 'baseRate', 'quantity', 'taxPercentage']
+  const validPairs = ['isDeleted', 'baseRate', 'quantity', 'taxPercentage']
 
   validPairs.map(val => {
     if (val === 'isDeleted') {
       if (isUndefined(vi[val])) {
         throw new Error(`Incomplete parameters for VoucherItem: ${val}`)
-      } 
-    } else if(!isNumber(parseFloat(vi[val]))) {
+      }
+    } else if (!isNumber(parseFloat(vi[val]))) {
       throw new Error(`Incomplete parameters for VoucherItem: ${val}`)
     }
   })
@@ -27,7 +28,7 @@ const validateVoucherItem = (vi) => {
 /******************************
  * Calculate Due Date, returns a copy of the voucherItem
  ******************************/
-export function calculateVoucherItem (voucherItem) {
+export function calculateVoucherItem(voucherItem: VoucherItem) {
   validateVoucherItem(voucherItem)
 
   const rate = opBigNumber(math.multiply, voucherItem.exchangeRate || 1, voucherItem.baseRate)
@@ -38,9 +39,10 @@ export function calculateVoucherItem (voucherItem) {
   const localSubTotal = math.multiply(subTotal, voucherItem.localExchangeRate || 1)
 
   // ********** Taxes
-  const baseTaxTotal = math.number(
+  const chargeItem = voucherItem?.costItem?.chargeItem
+  let baseTaxTotal = math.number(
     math.chain(math.bignumber(baseSubTotal))
-      .multiply(math.bignumber(voucherItem.taxPercentage))
+      .multiply(math.bignumber(chargeItem.sellTax.percentage))
       .divide(100)
       .done()
   )
@@ -76,7 +78,7 @@ export function calculateVoucherItem (voucherItem) {
 /******************************
  * Calculate the voucher.
  ******************************/
-export function calculateVoucher (paramVoucher) {
+export function calculateVoucher(paramVoucher: Voucher) {
   let voucher = { ...paramVoucher }
 
   const voucherItems = voucher.voucherItems || []
@@ -88,7 +90,7 @@ export function calculateVoucher (paramVoucher) {
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.baseSubTotal),
     0
   )
-  
+
   voucher.subTotal = validVoucherItems.reduce(
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.subTotal),
     0
@@ -100,7 +102,7 @@ export function calculateVoucher (paramVoucher) {
   )
 
   // ********** Taxes
-  
+
   voucher.baseTaxTotal = validVoucherItems.reduce(
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.baseTaxTotal),
     0
@@ -115,43 +117,67 @@ export function calculateVoucher (paramVoucher) {
     (sum, voucherItem) => opBigNumber(math.sum, sum, voucherItem.localTaxTotal),
     0
   )
- 
+
   // ********** Totals
   voucher.total = opBigNumber(math.sum, voucher.subTotal, voucher.taxTotal)
 
   voucher.localTotal = opBigNumber(math.sum, voucher.localSubTotal, voucher.localTaxTotal)
-  
+
   voucher.dueDate = calculateDueDate(voucher)
 
-  voucher.balance = opBigNumber(math.subtract, voucher.total, 0)
+  // ********** Payments
+  // @ts-ignore
+  const payments: Payment[] = voucher.payments || voucher.voucherPayments || []
+  if (payments.length > 0) {
+    const validPayments = payments.filter(payment => payment.status === 'PAID')
+
+    const totalVoucherPayment = validPayments.reduce(
+      (sum, vp) => opBigNumber(math.sum, sum, vp.amount),
+      0
+    )
+
+    voucher.balance = opBigNumber(math.subtract, voucher.total, totalVoucherPayment)
+  } else {
+    voucher.balance = opBigNumber(math.subtract, voucher.total, 0)
+  }
 
   return voucher
 }
 
-/******************************
- * Calculate the voucher with balance.
- ******************************/
-export function calculateVoucherWithBalance (params) {
-  let { voucher, payments } = params
+export function computeTaxSummary(voucher: Voucher) {
+  const taxSummaryItems = voucher.voucherItems && voucher.voucherItems
+    .filter(item => item.isDeleted === false)
+    .reduce((acc, cur) => {
+      const stat = acc.find(t => t.tax.uuid === cur.tax.uuid)
+      if (stat) {
+        stat.total = math.add(stat.total, cur.total)
+        stat.taxTotal = math.add(stat.taxTotal, cur.taxTotal)
+      } else {
+        acc.push({
+          tax: {
+            uuid: cur.tax.uuid,
+            code: cur.tax.code,
+            percentage: math.number(cur.tax.percentage)
+          },
+          taxTotal: math.number(cur.taxTotal),
+          total: math.number(cur.total)
+        })
+      }
 
-  const calculatedVoucher = calculateVoucher(voucher)
+      return acc
+    }, [])
 
-  const validPayments = payments.filter(vi => vi.status === 'PAID')
 
-  const totalVoucherPayment = validPayments.reduce(
-    (sum, vp) => opBigNumber(math.sum, sum, vp.amount),
-    0
-  )
-  
-  calculatedVoucher.balance = opBigNumber(math.subtract, calculatedVoucher.total, totalVoucherPayment)
 
-  return calculatedVoucher
+  return {
+    taxSummaryItems
+  }
 }
 
 /******************************
  * Sort
  ******************************/
-export function sortVoucherItems (voucherItems) {
+export function sortVoucherItems(voucherItems) {
   return sortBy(voucherItems, (vi) => {
     if (!vi.costItem || !vi.costItem.chargeItem) {
       throw new Error(`Cannot sort Voucher Items without Chargeitems.`)

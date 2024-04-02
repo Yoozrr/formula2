@@ -1,27 +1,42 @@
 import * as math from 'mathjs'
-import { find, countBy, sortBy, flow, isEmpty, mapValues } from 'lodash'
-import { map as mapFp, filter as filterFp, flatten as flattenFp, reduce as reduceFp, compact, uniq, sumBy as sumByFp, groupBy as groupByFp } from 'lodash/fp'
+import { sortBy, flow } from 'lodash'
+import { map as mapFp, filter as filterFp, flatten as flattenFp, reduce as reduceFp } from 'lodash/fp'
 
 import { opBigNumber } from "./helpers/opBigNumber"
 import * as grossProfit from './helpers/grossProfit'
 import * as percentage from './helpers/percentage'
 import * as shortBill from './helpers/shortBill'
+import { CostItem, CostSheet, Voucher, VoucherItem } from '../types/types'
 
-const getBookingVouchers = flow(
-  mapFp((booking) => {
-    if (booking && booking.vouchers) {
-      return booking.vouchers
-    } else {
-      return []
-    }
-  }),
-  flattenFp
-)
+// const getBookingVouchers = flow(
+//   mapFp((booking) => {
+//     if (booking && booking.vouchers) {
+//       return booking.vouchers
+//     } else {
+//       return []
+//     }
+//   }),
+//   flattenFp
+// )
+
+type VoucherItemMisc = VoucherItem & { isCreditNote?: Boolean };
+type GetRateParam = {
+  vouchers: Voucher[],
+  voucherStatus: string[],
+  costItemUuid: string,
+  transactionType: string
+}
+type OptionsParam = {
+  grossProfit?: number;
+  percentage?: number;
+  shortBill?: number;
+}
+
 
 const getVoucherItems = flow(
-  mapFp((voucher) => {
+  mapFp((voucher: Voucher) => {
     if (voucher && voucher.voucherItems) {
-      return voucher.voucherItems.map(vi => {
+      return voucher.voucherItems.map((vi: VoucherItemMisc) => {
         vi.isCreditNote = voucher.isCreditNote
         return vi
       })
@@ -32,15 +47,15 @@ const getVoucherItems = flow(
   flattenFp
 )
 
-const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
+const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }: GetRateParam) =>
   flow(
-    filterFp((voucher) => voucherStatus.indexOf(voucher.status) >= 0 && voucher.transactionType === transactionType),
+    filterFp((voucher: Voucher) => voucherStatus.indexOf(voucher.status) >= 0 && voucher.transactionType === transactionType),
     getVoucherItems,
-    filterFp((voucherItem) => voucherItem.costItem.uuid === costItemUuid && !voucherItem.isDeleted),
+    filterFp((voucherItem: VoucherItemMisc) => voucherItem.costItem.uuid === costItemUuid && !voucherItem.isDeleted),
     reduceFp((sum, voucherItem) => {
       const viValue = voucherItem.localSubTotal
 
-      const result = voucherItem.isCreditNote 
+      const result = voucherItem.isCreditNote
         ? opBigNumber(math.subtract, sum, viValue)
         : opBigNumber(math.add, sum, viValue)
 
@@ -48,14 +63,14 @@ const getRate = ({ vouchers, voucherStatus, costItemUuid, transactionType }) =>
     }, 0)
   )(vouchers)
 
-  
+
 const getFunction = (fnc, optionName) => {
   return fnc[optionName] || fnc.default
 }
 
-const getSellCostTotal = ({ quantity, 
-  sellBaseRate, sellExchangeRate, 
-  costBaseRate, costExchangeRate }) => {
+const getSellCostTotal = ({ quantity,
+  sellBaseRate, sellExchangeRate,
+  costBaseRate, costExchangeRate }: any) => {
   const sellRate = opBigNumber(math.multiply, sellBaseRate, sellExchangeRate)
   const sellTotal = opBigNumber(math.multiply, sellRate, quantity)
   const costRate = opBigNumber(math.multiply, costBaseRate, costExchangeRate)
@@ -71,11 +86,11 @@ const getSellCostTotal = ({ quantity,
   }
 }
 
-export function calculateGrossProfit (ci, options = {}) {
-  // console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')  
-    ci = Object.assign(ci, getSellCostTotal(ci))
+export function calculateGrossProfit(ci, options: OptionsParam = {}) {
+  // console.log('!!! To deprecate calculateGrossProfit function in @shipx/formula because gross profit cannot be computed without accurals. !!!')
+  ci = Object.assign(ci, getSellCostTotal(ci))
 
-    ci.grossProfit = getFunction(grossProfit, options.grossProfit)(ci)
+  ci.grossProfit = getFunction(grossProfit, options.grossProfit)(ci)
 
   // Compute percentage
   ci.percentage = getFunction(percentage, options.percentage)(ci)
@@ -83,8 +98,9 @@ export function calculateGrossProfit (ci, options = {}) {
   return ci
 }
 
-export function computeCostItems (costItems, vouchers, currency, options = {}) {
-  return costItems.map((ci) => {
+// @ts-ignore
+export function computeCostItems(costItems: CostItem[], vouchers: Voucher[], currency, options: OptionsParam = {}) {
+  return costItems.map((ci: CostItem) => {
     ci = Object.assign(ci, getSellCostTotal(ci))
 
     ci.accountPayable = getRate({
@@ -115,6 +131,7 @@ export function computeCostItems (costItems, vouchers, currency, options = {}) {
     ci.grossProfit = getFunction(grossProfit, options.grossProfit)(ci)
 
     // Compute percentage
+    // @ts-ignore
     ci.percentage = getFunction(percentage, options.percentage)(ci)
 
     // Compute shortBill
@@ -127,8 +144,8 @@ export function computeCostItems (costItems, vouchers, currency, options = {}) {
   })
 }
 
-export function summarizeCostItems (costItems) {
-  const rtnObj = {}
+export function summarizeCostItems(costItems: CostItem[]): CostSheet {
+  const rtnObj: CostSheet = {}
   const totals = ['estimatedProfit', 'grossProfit', 'costTotal', 'sellTotal', 'accrual', 'accountPayable', 'accountReceivable', 'accountPayableDraft', 'accountReceivableDraft', 'shortBill']
 
   totals.map(t => {
@@ -147,18 +164,18 @@ export function summarizeCostItems (costItems) {
     rtnObj[t] = rtnObj[t]
   })
 
-  rtnObj.shortBillPercentage = rtnObj.sellTotal > 0 
+  rtnObj.shortBillPercentage = rtnObj.sellTotal > 0
     ? math.chain(math.bignumber(rtnObj.shortBill))
       .divide(math.bignumber(rtnObj.sellTotal))
       .multiply(100)
-      .done() 
+      .done()
     : 0
   rtnObj.shortBillPercentage = math.number(rtnObj.shortBillPercentage)
 
   return rtnObj
 }
 
-export function sortCostItems (costItems) {
+export function sortCostItems(costItems) {
   return sortBy(costItems, (ci) => {
     const deletedField = (ci.isDeleted ? '10000000' : '0')
 
